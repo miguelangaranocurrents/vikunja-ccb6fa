@@ -74,6 +74,12 @@ async function doRefresh(): Promise<string | null> {
 	}
 }
 
+/**
+ * Request config as seen by the 401 retry interceptor. `_retried` is set once a
+ * request has been replayed after a token refresh.
+ */
+export type RetryableRequestConfig = AxiosRequestConfig & {_retried?: boolean}
+
 export function AuthenticatedHTTPFactory() {
 	const instance = HTTPFactory()
 
@@ -93,7 +99,7 @@ export function AuthenticatedHTTPFactory() {
 
 	// Response interceptor: on expired JWT 401, attempt a refresh and retry once.
 	instance.interceptors.response.use(undefined, async (error) => {
-		const originalRequest: AxiosRequestConfig & { _retried?: boolean } = error.config
+		const originalRequest: RetryableRequestConfig = error.config
 
 		// Only intercept 401s, and don't retry a request that already retried.
 		if (error.response?.status !== 401 || originalRequest._retried) {

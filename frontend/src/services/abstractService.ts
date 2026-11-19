@@ -1,4 +1,5 @@
 import {AuthenticatedHTTPFactory} from '@/helpers/fetcher'
+import type {RetryableRequestConfig} from '@/helpers/fetcher'
 import type {Method} from 'axios'
 
 import {objectToSnakeCase} from '@/helpers/case'
@@ -74,6 +75,13 @@ export default abstract class AbstractService<Model extends IAbstract = IAbstrac
 
 		// Set the interceptors to process every request
 		this.http.interceptors.request.use((config) => {
+			// A request replayed after a token refresh (see AuthenticatedHTTPFactory) already
+			// carries its serialized body from the first attempt. Running the preprocessors
+			// again would act on a string instead of the model.
+			if ((config as RetryableRequestConfig)._retried) {
+				return config
+			}
+
 			switch (config.method) {
 				case 'post':
 					if (this.useUpdateInterceptor()) {
